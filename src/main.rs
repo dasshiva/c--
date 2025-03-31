@@ -1,6 +1,5 @@
 use std::env;
 use std::process;
-use std::fmt;
 
 #[derive(Debug, PartialEq)]
 enum Token {
@@ -17,6 +16,7 @@ enum Expr {
     Sub(Box<Expr>, Box<Expr>)
 }
 
+#[derive(Debug)]
 // Read-only buffer
 struct ROBuffer {
     contents: Vec<u8>,
@@ -60,14 +60,6 @@ impl ROBuffer {
     }
 }
 
-impl fmt::Debug for ROBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for c in &self.contents {
-            write!(f, "{}", char::from_u32(*c as u32).unwrap());
-        }
-        write!(f, "")
-    }
-}
 
 fn is_digit(c: u8) -> bool {
     (c >= b'0') && (c <= b'9')
