@@ -1,0 +1,6 @@
+expr = num |
+        expr '+' expr |
+        expr '-' expr
+
+num = digit { digit }
+digit = '0' ... '9'
