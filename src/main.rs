@@ -1,46 +1,67 @@
 use std::env;
 use std::process;
 
-#[derive(Debug, PartialEq)]
-enum Token {
-    Invalid,
+#[derive(Debug, PartialEq, Copy, Clone)]
+enum TokenKind {
+    Invalid(u8),
     Num(i64),
-    AddOp, // '+'
-    SubOp, // '-'
-    MulOp, // '*'
-    DivOp, // '-'
+    Add, // '+'
+    Sub, // '-'
+    Mul, // '*'
+    Div, // '-'
+    LPar,  // '('
+    RPar,  // ')'
     End
 }
 
-#[derive(Debug, Copy, Clone)]
-enum Expr {
-    Number(i64),
-    Add,
-    Sub,
-    Mul,
-    Div
+#[derive(Debug, PartialEq)]
+struct Token {
+    kind:   TokenKind, 
+    line:   u32,
+    column: u32,
 }
 
-impl Expr {
+impl Token {
+    fn new(kind: TokenKind, col: u32, ln: u32) -> Self {
+        Self {
+            kind,
+            line: ln,
+            column: col
+        }
+    }
+
+    fn col(&self) -> u32 {
+        self.column
+    }
+
+    fn line(&self) -> u32 {
+        self.line
+    }
+
+
     fn to_string<'a>(&self) -> &'a str {
-        match &self {
-            Expr::Add => "add",
-            Expr::Sub => "sub",
-            Expr::Mul => "mul",
-            Expr::Div => "div",
+        match &self.kind() {
+            TokenKind::Add => "add",
+            TokenKind::Sub => "sub",
+            TokenKind::Mul => "mul",
+            TokenKind::Div => "div",
             _ => unreachable!()
         }
     }
 
     fn precedence(&self) -> u8 {
-        return match &self {
-            Expr::Number(_) => 0,
-            Expr::Sub => 1,
-            Expr::Add => 2,
-            Expr::Div => 3,
-            Expr::Mul => 4,
-            //_ => unreachable!()
+        return match &self.kind() {
+            TokenKind::Num(_) => 0,
+            TokenKind::Sub => 1,
+            TokenKind::Add => 1,
+            TokenKind::Div => 3,
+            TokenKind::Mul => 3,
+            _ => unreachable!()
         }
+    }
+
+    fn kind(&self) -> TokenKind {
+        self.kind
     }
 }
 
@@ -93,73 +114,121 @@ fn is_digit(c: u8) -> bool {
     (c >= b'0') && (c <= b'9')
 }
 
-fn get_num(buf: &mut ROBuffer) -> Token {
-    let mut n = 0i64;
-    loop {
-        let ch = buf.next();
-        if ch.is_none() {
-            // Don't rewind if you reach EOF, otherwise infinite loop
-            break;
-        }
-
-        if !is_digit(ch.unwrap()) {
-            buf.rewind();
-            break;
-        }
-
-        let digit = ch.unwrap() - b'0';
-        n *= 10;
-        n += digit as i64;
-    }
-
-    Token::Num(n)
-    
+struct Tokeniser {
+    buf:    ROBuffer,
+    line:   u32,
+    column: u32
 }
 
-fn tokeniser(buf: &mut ROBuffer) -> Token {
-    loop {
-        let ch = buf.next();
-        if ch.is_none() { 
-            break;
-        }
-
-
-        return match ch.unwrap() {
-             b'0'..=b'9' => { buf.rewind(); get_num(buf) }
-             b' ' | b'\t' | b'\r' |  b'\n' => continue, // skip all spaces
-             b'+'  => Token::AddOp,
-             b'-'  => Token::SubOp,
-             b'*'  => Token::MulOp,
-             b'/'  => Token::DivOp,
-             _     => Token::Invalid
+impl Tokeniser {
+    fn new(expr: String) -> Self {
+        Self {
+            buf: ROBuffer::new(expr).unwrap(),
+            line: 1,
+            column: 1
         }
     }
 
-    Token::End
-}
+    fn get_num(&mut self) -> Token {
+        let mut n = 0i64;
+        let saved_col = self.column;
+        let saved_row = self.line;
+        loop {
+            let ch = self.buf.next();
+            // Don't rewind if you reach EOF, it will cause an infinite loop
+            if ch.is_none() {
+                break;
+            }
 
-fn collect_expr(expr: String) -> Result<Vec<Expr>, ()> {
-    let mut buf = ROBuffer::new(expr)?;
-    let mut exprs: Vec<Expr> = Vec::new();
-    loop {
-        let t = tokeniser(&mut buf);
-        match t {
-            Token::Num(x) => exprs.push(Expr::Number(x)),
-            Token::AddOp => exprs.push(Expr::Add),
-            Token::SubOp => exprs.push(Expr::Sub),
-            Token::MulOp => exprs.push(Expr::Mul),
-            Token::DivOp => exprs.push(Expr::Div),
-            Token::Invalid => return Err(()),
-            Token::End => break
-        };
+            if !is_digit(ch.unwrap()) {
+                self.column -= 1;
+                self.buf.rewind();
+                break;
+            }
+
+            let digit = ch.unwrap() - b'0';
+            n *= 10;
+            n += digit as i64;
+            self.column += 1;
+        }
+
+        Token::new(TokenKind::Num(n), saved_col, saved_row)
     }
 
-    Ok(exprs)
+    fn tokenise(&mut self) -> Token {
+        loop {
+            let ch = self.buf.next();
+            if ch.is_none() { 
+                break;
+            }
+
+            let ret = match ch.unwrap() {
+                b'0'..=b'9' => {
+                    self.buf.rewind(); 
+                    self.get_num() 
+                }
+
+                b' ' | b'\t' | b'\r' => {
+                    self.column += 1;
+                    continue;
+                }
+
+                b'\n' => {
+                    self.column = 1;
+                    self.line += 1;
+                    continue;
+                }
+
+                b'+'  => Token::new(TokenKind::Add, self.column, self.line),
+                b'-'  => Token::new(TokenKind::Sub, self.column, self.line),
+                b'*'  => Token::new(TokenKind::Mul, self.column, self.line),
+                b'/'  => Token::new(TokenKind::Div, self.column, self.line),
+                b'('  => Token::new(TokenKind::LPar, self.column, self.line),
+                b')'  => Token::new(TokenKind::RPar, self.column, self.line),
+                _     => Token::new(TokenKind::Invalid(ch.unwrap()),
+                                    self.column, self.line)
+            };
+
+            self.column += 1;
+
+            return ret;
+        }
+
+        Token::new(TokenKind::End, self.column, self.line)
+    }
+
+    fn collect(&mut self) -> Result<Vec<Token>, ()> {
+        let mut exprs: Vec<Token> = Vec::new();
+        loop {
+            let t = self.tokenise();
+            match t.kind() {
+                TokenKind::Invalid(x) => {
+                    println!("Invalid token {} at line {} column {}",
+                        (x as char), t.line(), t.col());
+                    return Err(());
+                },
+
+                TokenKind::End => break,
+                _ => exprs.push(t)
+            }
+        }
+
+        Ok(exprs)
+    }
 }
 
-fn add_operator(opstack: &mut Vec<Expr>, output: &mut Vec<Expr>, op: Expr) {
+
+
+fn add_operator(opstack: &mut Vec<Token>, output: &mut Vec<Token>, op: Token) {
     while opstack.len() > 0 {
         let opstack_top = opstack.pop().unwrap();
+        // Check for '(', if we have reached one, this is a new scope
+        // so popping is no longer allowed
+        if opstack_top.kind() == TokenKind::LPar {
+            opstack.push(opstack_top);
+            break;
+        }
+
         // If top has lower precdence than op, then add op to opstack
         // And return as there is nothing more to do
         if opstack_top.precedence() < op.precedence() {
@@ -179,14 +248,27 @@ fn add_operator(opstack: &mut Vec<Expr>, output: &mut Vec<Expr>, op: Expr) {
     opstack.push(op);
 }
 
-fn to_rpn(expr: Vec<Expr>) -> Vec<Expr> {
-    let mut ret: Vec<Expr> = Vec::new();
-    let mut opstack: Vec<Expr> = Vec::new();
+fn to_rpn(expr: Vec<Token>) -> Vec<Token> {
+    let mut ret: Vec<Token> = Vec::new();
+    let mut opstack: Vec<Token> = Vec::new();
 
     // https://en.wikipedia.org/wiki/Shunting_yard_algorithm
-    for e in expr {
-        match e {
-            Expr::Number(_) => ret.push(e),
+    'outer: for e in expr {
+        match e.kind() {
+            TokenKind::Num(_) => ret.push(e),
+            TokenKind::LPar => opstack.push(e),
+            TokenKind::RPar => {
+                while opstack.len() > 0 {
+                    let op = opstack.pop().unwrap();
+                    if op.kind() == TokenKind::LPar {
+                        continue 'outer;
+                    }
+
+                    ret.push(op);
+                }
+
+                panic!("Mismatched parenthesis");
+            }
             _ => add_operator(&mut opstack, &mut ret, e)
         };
     }
@@ -198,15 +280,16 @@ fn to_rpn(expr: Vec<Expr>) -> Vec<Expr> {
     ret
 }
 
+
 use std::io::Write;
-fn code_dump(expr: Vec<Expr>) -> std::io::Result<()> {
+fn code_dump(expr: Vec<Token>) -> std::io::Result<()> {
     use std::fs::File;
     let mut file = File::create("compile.ir")?;
     let mut id = 0u32;
     let mut stack: Vec<u32> = Vec::new();
     for e in expr {
-        match e {
-            Expr::Number(x) => {
+        match e.kind() {
+            TokenKind::Num(x) => {
                 stack.push(id);
                 writeln!(&mut file, "%{} = load i64 {}", id, x).unwrap();
                 id += 1;
@@ -217,7 +300,7 @@ fn code_dump(expr: Vec<Expr>) -> std::io::Result<()> {
                 let e2 = stack.pop().unwrap(); // a
                 // Operation format: [OP_NAME] a, b
                 writeln!(&mut file, "%{} = {} i64 %{}, %{}", id, e.to_string(), 
-                    e1, e2).unwrap();
+                    e2, e1).unwrap();
 
                 stack.push(id);  
                 id += 1;
@@ -236,7 +319,10 @@ fn main() {
     }
 
     let expr = args.nth(1).unwrap();
-    let parsed = collect_expr(expr).unwrap();
-    let rpn = to_rpn(parsed);
+    let mut tokeniser = Tokeniser::new(expr);
+    let parsed = tokeniser.collect();
+
+    let rpn = to_rpn(parsed.unwrap());
+    //println!("RPN Expression = {:?}", rpn);
     code_dump(rpn).unwrap();
 }
