@@ -1,10 +1,11 @@
 use std::env;
 use std::process;
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 enum TokenKind {
     Invalid(u8),
     Num(i64),
+    Ident(Vec<u8>),
     Add, // '+'
     Sub, // '-'
     Mul, // '*'
@@ -73,7 +74,7 @@ impl Token {
     }
 
     fn kind(&self) -> TokenKind {
-        self.kind
+        self.kind.clone()
     }
 }
 
@@ -126,6 +127,11 @@ fn is_digit(c: u8) -> bool {
     (c >= b'0') && (c <= b'9')
 }
 
+fn is_alnum(c: u8) -> bool {
+    is_digit(c) || ((c >= b'a') && (c <= b'z')) ||
+        ((c >= b'A') && (c <= b'Z'))
+}
+
 struct Tokeniser {
     buf:    ROBuffer,
     line:   u32,
@@ -167,6 +173,29 @@ impl Tokeniser {
         Token::new(TokenKind::Num(n), saved_col, saved_row)
     }
 
+    fn get_ident(&mut self) -> Token {
+        let mut bvec: Vec<u8> = Vec::new();
+        let saved_col = self.column;
+        let saved_row = self.line;
+        loop {
+            let ch = self.buf.next();
+            if ch.is_none() {
+                break;
+            }
+
+            if !is_alnum(ch.unwrap()) {
+                self.column -= 1;
+                self.buf.rewind();
+                break;
+            }
+
+            bvec.push(ch.unwrap());
+            self.column += 1;
+        }
+
+        Token::new(TokenKind::Ident(bvec), saved_col, saved_row)
+    }
+
     fn tokenise(&mut self) -> Token {
         loop {
             let ch = self.buf.next();
@@ -175,6 +204,11 @@ impl Tokeniser {
             }
 
             let ret = match ch.unwrap() {
+                b'a'..=b'z' | b'A'..=b'Z' => {
+                    self.buf.rewind();
+                    self.get_ident()
+                }
+
                 b'0'..=b'9' => {
                     self.buf.rewind(); 
                     self.get_num() 
@@ -271,7 +305,7 @@ fn to_rpn(expr: Vec<Token>) -> Vec<Token> {
 
     'outer: for e in expr {
         match e.kind() {
-            TokenKind::Num(_) => ret.push(e),
+            TokenKind::Num(_) | TokenKind::Ident(_) => ret.push(e),
             TokenKind::LPar => opstack.push(e),
             TokenKind::RPar => {
                 while opstack.len() > 0 {
@@ -297,7 +331,7 @@ fn to_rpn(expr: Vec<Token>) -> Vec<Token> {
     ret
 }
 
-
+/*
 use std::io::Write;
 fn code_dump(expr: Vec<Token>) -> std::io::Result<()> {
     use std::fs::File;
@@ -326,7 +360,7 @@ fn code_dump(expr: Vec<Token>) -> std::io::Result<()> {
     }
 
     Ok(())
-}
+} */
 
 fn main() {
     let mut args = env::args();
@@ -340,6 +374,6 @@ fn main() {
     let parsed = tokeniser.collect();
 
     let rpn = to_rpn(parsed.unwrap());
-    //println!("RPN Expression = {:?}", rpn);
-    code_dump(rpn).unwrap();
+    println!("RPN Expression = {:?}", rpn);
+    //code_dump(rpn).unwrap();
 }
