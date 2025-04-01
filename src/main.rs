@@ -199,8 +199,7 @@ fn to_rpn(expr: Vec<Expr>) -> Vec<Expr> {
 }
 
 use std::io::Write;
-
-fn codegen(expr: Vec<Expr>) -> std::io::Result<()> {
+fn code_dump(expr: Vec<Expr>) -> std::io::Result<Vec<u32>> {
     use std::fs::File;
     let mut file = File::create("compile.ir")?;
     let mut id = 0u32;
@@ -220,15 +219,13 @@ fn codegen(expr: Vec<Expr>) -> std::io::Result<()> {
                 writeln!(&mut file, "%{} = {} i64 %{}, %{}", id, e.to_string(), 
                     e1, e2).unwrap();
 
-                // '0' is a placeholder here because we do not care about
-                // the actual value in Pair
                 stack.push(id);  
                 id += 1;
             }
         };
     }
 
-    Ok(())
+    Ok(opcodes)
 }
 
 fn main() {
@@ -241,5 +238,5 @@ fn main() {
     let expr = args.nth(1).unwrap();
     let parsed = collect_expr(expr).unwrap();
     let rpn = to_rpn(parsed);
-    codegen(rpn).unwrap();
+    code_dump(rpn).unwrap();
 }
