@@ -199,7 +199,7 @@ fn to_rpn(expr: Vec<Expr>) -> Vec<Expr> {
 }
 
 use std::io::Write;
-fn code_dump(expr: Vec<Expr>) -> std::io::Result<Vec<u32>> {
+fn code_dump(expr: Vec<Expr>) -> std::io::Result<()> {
     use std::fs::File;
     let mut file = File::create("compile.ir")?;
     let mut id = 0u32;
@@ -225,7 +225,7 @@ fn code_dump(expr: Vec<Expr>) -> std::io::Result<Vec<u32>> {
         };
     }
 
-    Ok(opcodes)
+    Ok(())
 }
 
 fn main() {
