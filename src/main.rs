@@ -73,8 +73,8 @@ impl Token {
         }
     }
 
-    fn kind(&self) -> TokenKind {
-        self.kind.clone()
+    fn kind(&self) -> &TokenKind {
+        &self.kind
     }
 }
 
@@ -254,7 +254,7 @@ impl Tokeniser {
             match t.kind() {
                 TokenKind::Invalid(x) => {
                     println!("Invalid token {} at line {} column {}",
-                        (x as char), t.line(), t.col());
+                        (*x as char), t.line(), t.col());
                     return Err(());
                 },
 
@@ -275,7 +275,7 @@ fn add_operator(opstack: &mut Vec<Token>, output: &mut Vec<Token>, op: Token) {
         let opstack_top = opstack.pop().unwrap();
         // Check for '(', if we have reached one, this is a new scope
         // so popping is no longer allowed
-        if opstack_top.kind() == TokenKind::LPar {
+        if *opstack_top.kind() == TokenKind::LPar {
             opstack.push(opstack_top);
             break;
         }
@@ -310,7 +310,7 @@ fn to_rpn(expr: Vec<Token>) -> Vec<Token> {
             TokenKind::RPar => {
                 while opstack.len() > 0 {
                     let op = opstack.pop().unwrap();
-                    if op.kind() == TokenKind::LPar {
+                    if *op.kind() == TokenKind::LPar {
                         continue 'outer;
                     }
 
