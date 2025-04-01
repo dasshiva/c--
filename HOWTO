@@ -1,0 +1,7 @@
+How to add a new operator?
+Ans: 1) Add an entry to enum TokenKind identifying your operator
+     2) Add an entry to to_string() specifying how to stringise the operator
+     3) Add an entry to precedence() specifying the precedence of your 
+        operator with respect to others
+     4) Add your operator's visual representation to tokenise() in order to
+        allow the tokeniser to uniquely identify the operator

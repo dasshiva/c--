@@ -11,6 +11,10 @@ enum TokenKind {
     Div, // '-'
     LPar,  // '('
     RPar,  // ')'
+    Mod, // '%'
+    And, // '&'
+    Xor, // '^'
+    Or, // '|'
     End
 }
 
@@ -45,6 +49,10 @@ impl Token {
             TokenKind::Sub => "sub",
             TokenKind::Mul => "mul",
             TokenKind::Div => "div",
+            TokenKind::Mod => "rem",
+            TokenKind::And => "and",
+            TokenKind::Xor => "xor",
+            TokenKind::Or  => "or",
             _ => unreachable!()
         }
     }
@@ -52,10 +60,14 @@ impl Token {
     fn precedence(&self) -> u8 {
         return match &self.kind() {
             TokenKind::Num(_) => 0,
-            TokenKind::Sub => 1,
-            TokenKind::Add => 1,
-            TokenKind::Div => 3,
-            TokenKind::Mul => 3,
+            TokenKind::Or  => 1,
+            TokenKind::Xor => 2,
+            TokenKind::And => 3,
+            TokenKind::Sub => 5,
+            TokenKind::Add => 5,
+            TokenKind::Div => 6,
+            TokenKind::Mul => 6,
+            TokenKind::Mod => 6,
             _ => unreachable!()
         }
     }
@@ -185,6 +197,10 @@ impl Tokeniser {
                 b'/'  => Token::new(TokenKind::Div, self.column, self.line),
                 b'('  => Token::new(TokenKind::LPar, self.column, self.line),
                 b')'  => Token::new(TokenKind::RPar, self.column, self.line),
+                b'%'  => Token::new(TokenKind::Mod, self.column, self.line),
+                b'|'  => Token::new(TokenKind::Or, self.column, self.line),
+                b'^'  => Token::new(TokenKind::Xor, self.column, self.line),
+                b'&'  => Token::new(TokenKind::And, self.column, self.line),
                 _     => Token::new(TokenKind::Invalid(ch.unwrap()),
                                     self.column, self.line)
             };
@@ -217,8 +233,9 @@ impl Tokeniser {
     }
 }
 
-
-
+// https://en.wikipedia.org/wiki/Shunting_yard_algorithm
+// The below two functions implement the shunting yard algorithm
+// as mentioned in the above link
 fn add_operator(opstack: &mut Vec<Token>, output: &mut Vec<Token>, op: Token) {
     while opstack.len() > 0 {
         let opstack_top = opstack.pop().unwrap();
@@ -252,7 +269,6 @@ fn to_rpn(expr: Vec<Token>) -> Vec<Token> {
     let mut ret: Vec<Token> = Vec::new();
     let mut opstack: Vec<Token> = Vec::new();
 
-    // https://en.wikipedia.org/wiki/Shunting_yard_algorithm
     'outer: for e in expr {
         match e.kind() {
             TokenKind::Num(_) => ret.push(e),
@@ -267,7 +283,8 @@ fn to_rpn(expr: Vec<Token>) -> Vec<Token> {
                     ret.push(op);
                 }
 
-                panic!("Mismatched parenthesis");
+                panic!("Mismatched parenthesis at line {} column {}", 
+                        e.line(), e.col());
             }
             _ => add_operator(&mut opstack, &mut ret, e)
         };
