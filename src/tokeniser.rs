@@ -1,11 +1,12 @@
 use crate::robuffer::ROBuffer;
-use crate::utils::{is_digit, is_alnum};
+use crate::utils::{is_digit, is_alnum, is_space};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenKind {
     Invalid(u8),
     Num(i64),
     Ident(Vec<u8>),
+    FunCall(Vec<u8>, u32),
     Add, // '+'
     Sub, // '-'
     Mul, // '*'
@@ -158,6 +159,30 @@ impl Tokeniser {
         }
 
         Token::new(TokenKind::Num(n), saved_col, saved_row)
+    }
+
+    fn skip_space(&mut self) {
+        loop {
+            let ch = self.buf.next();
+
+            if ch.is_none() {
+                break;
+            }
+
+            if !is_space(ch.unwrap()) {
+                self.column -= 1;
+                self.buf.rewind();
+                break;
+            }
+
+            self.column += 1;
+        }
+    }
+
+    fn get_fncall(&mut self) -> Token {
+        let ident = self.get_ident();
+        self.skip_space();
+        Token::new(Token::End, 0,0)
     }
 
     fn get_ident(&mut self) -> Token {

@@ -7,3 +7,9 @@ pub fn is_alnum(c: u8) -> bool {
         ((c >= b'A') && (c <= b'Z'))
 }
 
+pub fn is_space(c: u8) -> bool {
+    match c {
+        b' ' | b'\r' | b'\t' => true,
+        _ => false
+    }
+}
