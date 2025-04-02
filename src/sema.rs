@@ -82,6 +82,59 @@ pub fn sema_infix(expr: &Vec<Token>) -> bool {
     true
 }
 
+/* Runs expr in a "virtual type system" that is, emulates the running of
+ * the expression by using the arity of the operators, placing dummy 
+ * values on a "virtual stack" (vstack) as results of expressions in order to
+ * figure out if the RPN is correct.
+ * A RPN is said to be correct in context of the semantic analyser
+ * when:
+ * 1) After expr is executed one and only one value is left on the vstack
+ * 2) vstack does not underflow at any point during execution
+ */
 pub fn sema_rpn(expr: &Vec<Token>) -> bool {
+    let dummy = 0u32;
+    let mut vstack: Vec<u32> = Vec::new();
+    for e in expr {
+        match e.kind() {
+            TokenKind::Num(_) | TokenKind::Ident(_) => vstack.push(dummy),
+            TokenKind::LPar => {
+                println!("Extra '(' found at at line {} column {}",
+                        e.line(), e.col());
+                return false;
+            }
+
+            TokenKind::RPar => {
+                println!("Extra ')' found at at line {} column {}",
+                        e.line(), e.col());
+                return false;
+            }
+
+            _ => {
+                let op1 = vstack.pop();
+                let op2 = vstack.pop();
+                if op1.is_none() {
+                    println!("Operator {} at line {} column {} has no operands but needs 2",
+                            e.to_string(), e.line(), e.col());
+                    return false;
+                }
+
+                if op2.is_none() {
+                    println!("Operator {} at line {} column {} has 1 operand but needs 2",
+                            e.to_string(), e.line(), e.col());
+                    return false;
+                }
+
+                op1.unwrap();
+                op2.unwrap();
+                vstack.push(dummy);
+            }
+        }
+    }
+
+    if vstack.len() != 1 {
+        println!("RPN generator internal error: vstack has excess elements");
+        return false;
+    }
+
     true
 }
