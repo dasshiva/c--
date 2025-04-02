@@ -1,5 +1,5 @@
-use crate::Token;
-use crate::TokenKind;
+use crate::tokeniser::Token;
+use crate::tokeniser::TokenKind;
 
 // https://en.wikipedia.org/wiki/Shunting_yard_algorithm
 // The below two functions implement the shunting yard algorithm
