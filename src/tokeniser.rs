@@ -182,7 +182,7 @@ impl Tokeniser {
     fn get_fncall(&mut self) -> Token {
         let ident = self.get_ident();
         self.skip_space();
-        Token::new(Token::End, 0,0)
+        Token::new(TokenKind::End, 0,0)
     }
 
     fn get_ident(&mut self) -> Token {
