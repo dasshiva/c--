@@ -1,6 +1,12 @@
-expr = num |
-        expr '+' expr |
-        expr '-' expr
+expr =  num |
+        ident |
+        expr op expr |
+        '(' expr op expr ')'
 
 num = digit { digit }
+ident = letter { letterOrDigit }
+letterOrDigit = letter | digit 
+
+op = '+' | '-' | '*' | '/' | '^' | '&' | '|' | '%'
+letter = 'a' ... 'z' | 'A' ... 'Z'
 digit = '0' ... '9'
