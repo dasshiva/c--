@@ -58,6 +58,13 @@ impl Token {
         }
     }
 
+    pub fn is_ident(&self) -> bool {
+        match self.kind {
+            TokenKind::Ident(_) => true,
+            _ => false
+        }
+    }
+
     pub fn is_operator(&self) -> bool {
         match self.kind {
             TokenKind::Add | TokenKind::Sub | TokenKind::Mul |

@@ -54,7 +54,8 @@ pub fn sema_infix(expr: &Vec<Token>) -> bool {
 
             let next_atom_uw = next_atom.unwrap();
             if next_atom_uw.is_operand() || next_atom_uw.is_paren() {
-                // Special case for right parenthesis
+                // Special case for right parenthesis i.e end of
+                // expression operand e.g the '9' in (8 + 9)
                 if next_atom_uw.is_paren() {
                     if *next_atom_uw.kind() == TokenKind::RPar {
                         idx += 1;
@@ -106,7 +107,7 @@ pub fn sema_rpn(expr: &Vec<Token>) -> bool {
     for e in expr {
         match e.kind() {
             TokenKind::Num(_) => vstack.push(num),
-            TokenKind::Ident(_) => vstack.push(ident),
+            TokenKind::Ident(x) => vstack.push(ident),
             TokenKind::LPar => {
                 println!("Extra '(' found at at line {} column {}",
                         e.line(), e.col());
@@ -151,6 +152,7 @@ pub fn sema_rpn(expr: &Vec<Token>) -> bool {
     }
 
     if vstack.len() != 1 {
+        println!("RPN expression dump = {:?}", expr);
         println!("RPN generator internal error: vstack has excess elements");
         return false;
     }
