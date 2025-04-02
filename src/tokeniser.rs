@@ -43,17 +43,48 @@ impl Token {
         self.line
     }
 
+    pub fn is_operand(&self) -> bool {
+        match self.kind {
+            TokenKind::Num(_) | TokenKind::Ident(_) => true,
+            _ => false
+        }
+    }
 
-    fn to_string<'a>(&self) -> &'a str {
+    pub fn is_paren(&self) -> bool {
+        match self.kind {
+            TokenKind::LPar | TokenKind::RPar => true,
+            _ => false
+        }
+    }
+
+    pub fn is_operator(&self) -> bool {
+        match self.kind {
+            TokenKind::Add | TokenKind::Sub | TokenKind::Mul |
+            TokenKind::Div | TokenKind::And | TokenKind::Mod |
+            TokenKind::Xor | TokenKind::Or => true,
+            _ => false
+        }
+    }
+
+    pub fn value(&self) -> String {
+        match &self.kind {
+            TokenKind::Num(int) => int.to_string(),
+            TokenKind::Ident(name) => String::from_utf8(name.clone()).unwrap(),
+            _ => unreachable!()
+        }
+    }
+
+
+    pub fn to_string<'a>(&self) -> &'a str {
         match &self.kind() {
-            TokenKind::Add => "add",
-            TokenKind::Sub => "sub",
-            TokenKind::Mul => "mul",
-            TokenKind::Div => "div",
-            TokenKind::Mod => "rem",
-            TokenKind::And => "and",
-            TokenKind::Xor => "xor",
-            TokenKind::Or  => "or",
+            TokenKind::Add => "+",
+            TokenKind::Sub => "-",
+            TokenKind::Mul => "*",
+            TokenKind::Div => "/",
+            TokenKind::Mod => "%",
+            TokenKind::And => "&",
+            TokenKind::Xor => "^",
+            TokenKind::Or  => "|",
             _ => unreachable!()
         }
     }

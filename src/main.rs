@@ -5,8 +5,9 @@ mod expr_parser;
 mod tokeniser;
 mod robuffer;
 mod utils;
+mod sema;
 
-use crate::tokeniser::Tokeniser;
+use crate::tokeniser::{Tokeniser, Token};
 
 /*
 use std::io::Write;
@@ -48,9 +49,20 @@ fn main() {
 
     let expr = args.nth(1).unwrap();
     let mut tokeniser = Tokeniser::new(expr);
-    let parsed = tokeniser.collect();
+    let parsed: Result<Vec<Token>, ()> = tokeniser.collect();
+    if parsed.is_err() {
+        process::exit(1);
+    }
 
-    let rpn = expr_parser::to_rpn(parsed.unwrap());
+    if !sema::sema_infix(parsed.as_ref().unwrap()) {
+        process::exit(1);
+    }
+
+    let rpn: Vec<Token> = expr_parser::to_rpn(parsed.unwrap());
+    if !sema::sema_rpn(&rpn) {
+        process::exit(1);
+    }
+
     println!("RPN Expression = {:?}", rpn);
     //code_dump(rpn).unwrap();
 }
