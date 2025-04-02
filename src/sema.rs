@@ -54,6 +54,14 @@ pub fn sema_infix(expr: &Vec<Token>) -> bool {
 
             let next_atom_uw = next_atom.unwrap();
             if next_atom_uw.is_operand() || next_atom_uw.is_paren() {
+                // Special case for right parenthesis
+                if next_atom_uw.is_paren() {
+                    if *next_atom_uw.kind() == TokenKind::RPar {
+                        idx += 1;
+                        continue;
+                    }
+                }
+
                 println!("Expected operator after '{}' at line {} column {}",
                         atom.value(), atom.line(), atom.col());
                 return false;
