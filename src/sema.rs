@@ -92,11 +92,13 @@ pub fn sema_infix(expr: &Vec<Token>) -> bool {
  * 2) vstack does not underflow at any point during execution
  */
 pub fn sema_rpn(expr: &Vec<Token>) -> bool {
-    let dummy = 0u32;
+    let num = 0u32;
+    let ident = 1u32;
     let mut vstack: Vec<u32> = Vec::new();
     for e in expr {
         match e.kind() {
-            TokenKind::Num(_) | TokenKind::Ident(_) => vstack.push(dummy),
+            TokenKind::Num(_) => vstack.push(num),
+            TokenKind::Ident(_) => vstack.push(ident),
             TokenKind::LPar => {
                 println!("Extra '(' found at at line {} column {}",
                         e.line(), e.col());
@@ -125,8 +127,17 @@ pub fn sema_rpn(expr: &Vec<Token>) -> bool {
                 }
 
                 op1.unwrap();
-                op2.unwrap();
-                vstack.push(dummy);
+                let target = op2.unwrap();
+
+                if *e.kind() == TokenKind::Assign {
+                    if target != ident {
+                        println!("Operator '=' at line {} column {} takes an identifier as destination",
+                            e.line(), e.col());
+                        return false;
+                    }
+                }
+
+                vstack.push(ident);
             }
         }
     }

@@ -16,6 +16,7 @@ pub enum TokenKind {
     And, // '&'
     Xor, // '^'
     Or, // '|'
+    Assign, // '='
     End
 }
 
@@ -61,7 +62,7 @@ impl Token {
         match self.kind {
             TokenKind::Add | TokenKind::Sub | TokenKind::Mul |
             TokenKind::Div | TokenKind::And | TokenKind::Mod |
-            TokenKind::Xor | TokenKind::Or => true,
+            TokenKind::Xor | TokenKind::Or  | TokenKind::Assign => true,
             _ => false
         }
     }
@@ -85,13 +86,15 @@ impl Token {
             TokenKind::And => "&",
             TokenKind::Xor => "^",
             TokenKind::Or  => "|",
+            TokenKind::Assign => "=",
             _ => unreachable!()
         }
     }
 
-    pub fn precedence(&self) -> u8 {
+    pub fn precedence(&self) -> i8 {
         return match &self.kind() {
-            TokenKind::Num(_) => 0,
+            TokenKind::Assign => -1, // Lowest possible priority
+            TokenKind::Num(_) | TokenKind::Ident(_) => 0,
             TokenKind::Or  => 1,
             TokenKind::Xor => 2,
             TokenKind::And => 3,
@@ -202,6 +205,7 @@ impl Tokeniser {
                     continue;
                 }
 
+                b'='  => Token::new(TokenKind::Assign, self.column, self.line),
                 b'+'  => Token::new(TokenKind::Add, self.column, self.line),
                 b'-'  => Token::new(TokenKind::Sub, self.column, self.line),
                 b'*'  => Token::new(TokenKind::Mul, self.column, self.line),
